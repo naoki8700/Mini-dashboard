@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Application Météo</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+    margin:0;
+    background:black;
+    font-family:Arial,sans-serif;
+}
+
+/* TOP */
+.top{
+    margin:8px;
+    padding:15px;
+    background:#e9e9e9;
+    border-radius:15px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    position:relative;
+}
+
+/* MAIN */
+.main{
+    display:grid;
+    grid-template-columns:48% 49%;
+    gap:2%;
+    padding:15px;
+}
+
+/* BOX */
+.box{
+    background:#e9e9e9;
+    border-radius:40px;
+    padding:20px;
+    overflow:auto;
+}
+
+/* GAUCHE */
+.meteoBox{height:500px;}
+.graphBox{height:300px;margin-top:30px;display:flex;flex-direction:column;}
+
+/* DROITE */
+.p1{height:200px;}
+.p5{height:200px;margin-top:30px;}
+.info{height:180px;margin-top:30px;}
+.citationBox{height:180px;margin-top:30px;}
+
+/* INPUT */
+textarea{
+    width:100%;
+    height:80px;
+    border:none;
+    background:transparent;
+    resize:none;
+}
+
+button{padding:8px 12px;}
+input{padding:8px;}
+
+#meteoActuelle{
+    font-size:24px;
+    font-weight:bold;
+}
+
+/* GRAPH */
+canvas{
+    width:100% !important;
+    height:100% !important;
+    flex:1;
+}
+
+/* ================= SUGGESTIONS ================= */
+
+#suggestions{
+    position:absolute;
+    top:60px;
+    left:0;
+    background:white;
+    border-radius:10px;
+    width:250px;
+    max-height:180px;
+    overflow:auto;
+    display:none;
+    z-index:1000;
+}
+
+.suggestion{
+    padding:8px;
+    cursor:pointer;
+}
+
+.suggestion:hover{
+    background:#ddd;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="top">
+
+<h2>Météo</h2>
+
+<div style="position:relative;">
+
+<input id="ville" placeholder="Ville"
+oninput="suggestionsVilles()">
+
+<div id="suggestions"></div>
+
+<button onclick="chercherMeteo()">Rechercher</button>
+
+</div>
+
+<div>
+<div id="date"></div>
+<div id="heure"></div>
+</div>
+
+</div>
+
+<div class="main">
+
+<!-- GAUCHE -->
+<div>
+
+<div class="box meteoBox">
+
+<div id="meteoActuelle">Carte actuelle</div>
+
+<textarea placeholder="Écrire ici..."></textarea>
+
+</div>
+
+<div class="box graphBox">
+
+<h3>Graphique température</h3>
+<canvas id="chartTemp"></canvas>
+
+</div>
+
+</div>
+
+<!-- DROITE -->
+<div>
+
+<div class="box p1">
+<div id="prevision1">Prévision 1 jour</div>
+</div>
+
+<div class="box p5">
+<div id="prevision5">Prévision 5 jours</div>
+</div>
+
+<div class="box info">
+<div id="infos">Infos supplémentaire</div>
+</div>
+
+<div class="box citationBox">
+<div id="citation">Citation météo...</div>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+/* ================= DATE ================= */
+
+function updateDateHeure(){
+
+    const now = new Date();
+
+    document.getElementById("heure").innerHTML =
+        now.toLocaleTimeString("fr-FR");
+
+    document.getElementById("date").innerHTML =
+        now.toLocaleDateString("fr-FR",{
+            weekday:"long",
+            day:"numeric",
+            month:"long",
+            year:"numeric"
+        });
+}
+
+setInterval(updateDateHeure,1000);
+updateDateHeure();
+
+
+/* ================= GRAPH ================= */
+
+let chart;
+
+function updateGraph(labels, data){
+
+    const ctx = document.getElementById("chartTemp");
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(ctx,{
+        type:"line",
+        data:{
+            labels:labels,
+            datasets:[{
+                label:"Température (°C)",
+                data:data,
+                fill:true,
+                tension:0.3
+            }]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false
+        }
+    });
+}
+
+
+/* ================= CITATIONS ================= */
+
+const citations = {
+    sun:[
+        "Le soleil est une nouvelle chance chaque jour.",
+        "Chaque rayon apporte de l’énergie.",
+        "Le bonheur est souvent lumineux."
+    ],
+    rain:[
+        "La pluie rend les souvenirs plus profonds.",
+        "Les jours gris font apprécier le soleil."
+    ],
+    cloud:[
+        "Les nuages ne restent jamais pour toujours.",
+        "Même le ciel couvert avance."
+    ],
+    thunder:[
+        "La tempête révèle la vraie force.",
+        "Après l’orage vient le silence."
+    ],
+    snow:[
+        "Le silence de la neige apaise l’esprit.",
+        "Chaque flocon est unique."
+    ],
+    default:[
+        "Le temps change, mais toi aussi.",
+        "Chaque jour est une météo intérieure."
+    ]
+};
+
+function afficherCitation(type){
+    const list = citations[type] || citations.default;
+    const quote = list[Math.floor(Math.random()*list.length)];
+    document.getElementById("citation").innerHTML = `💬 "${quote}"`;
+}
+
+
+/* ================= SUGGESTIONS VILLES ================= */
+
+const villes = [
+    "Paris, France",
+    "Lyon, France",
+    "Marseille, France",
+    "Lille, France",
+    "Bordeaux, France",
+    "Nice, France",
+    "Nantes, France",
+    "Toulouse, France",
+    "Strasbourg, France",
+    "Montpellier, France",
+    "London, UK",
+    "New York, USA",
+    "Tokyo, Japan",
+    "Berlin, Germany",
+    "Madrid, Spain",
+    "Rome, Italy",
+    "Dubai, UAE",
+    "Sydney, Australia",
+    "Montréal, Canada",
+    "Amsterdam, Netherlands"
+];
+
+function suggestionsVilles(){
+
+    const input = document.getElementById("ville");
+    const box = document.getElementById("suggestions");
+    const val = input.value.toLowerCase();
+
+    if(val.length < 2){
+        box.style.display = "none";
+        return;
+    }
+
+    const res = villes.filter(v =>
+        v.toLowerCase().includes(val)
+    );
+
+    box.innerHTML = "";
+
+    res.forEach(v=>{
+        const div = document.createElement("div");
+        div.className = "suggestion";
+        div.innerText = v;
+
+        div.onclick = ()=>{
+            input.value = v;
+            box.style.display = "none";
+        };
+
+        box.appendChild(div);
+    });
+
+    box.style.display = res.length ? "block" : "none";
+}
+
+
+/* ================= METEO ================= */
+
+async function chercherMeteo(){
+
+    const ville = document.getElementById("ville").value;
+
+    if(!ville){
+        alert("Entrez une ville");
+        return;
+    }
+
+    try{
+
+        const res = await fetch(`https://wttr.in/${ville}?format=j1`);
+        const data = await res.json();
+
+        const actuel = data.current_condition[0];
+        const temp = parseInt(actuel.temp_C);
+        const desc = actuel.weatherDesc[0].value.toLowerCase();
+
+        let emojiTemp = "😐";
+        if(temp >= 30) emojiTemp = "🥵";
+        else if(temp <= 5) emojiTemp = "🥶";
+
+        let type = "default";
+        let emojiWeather = "🌍";
+
+        if(desc.includes("thunder")){ type="thunder"; emojiWeather="⛈️"; }
+        else if(desc.includes("rain")){ type="rain"; emojiWeather="🌧️"; }
+        else if(desc.includes("snow")){ type="snow"; emojiWeather="❄️"; }
+        else if(desc.includes("cloud")){ type="cloud"; emojiWeather="☁️"; }
+        else if(desc.includes("sun")){ type="sun"; emojiWeather="😎"; }
+
+        const emoji = `${emojiTemp} ${emojiWeather}`;
+
+        document.getElementById("meteoActuelle").innerHTML =
+        `${emoji}<br><br>📍 ${ville}<br><br>🌡️ ${temp}°C<br><br>☁️ ${actuel.weatherDesc[0].value}`;
+
+        document.getElementById("prevision1").innerHTML =
+        `📅 Aujourd'hui<br>
+        Min : ${data.weather[0].mintempC}°C<br>
+        Max : ${data.weather[0].maxtempC}°C`;
+
+        let labels = [];
+        let values = [];
+
+        data.weather.slice(0,3).forEach(j=>{
+            labels.push(j.date);
+            values.push(j.avgtempC);
+        });
+
+        updateGraph(labels, values);
+
+        document.getElementById("prevision5").innerHTML =
+        data.weather.map(j =>
+            `📅 ${j.date}<br>🌡️ ${j.avgtempC}°C<br><br>`
+        ).join("");
+
+        document.getElementById("infos").innerHTML =
+        `💧 Humidité : ${actuel.humidity}%<br><br>
+         💨 Vent : ${actuel.windspeedKmph} km/h`;
+
+        afficherCitation(type);
+
+    }
+    catch(e){
+        alert("Erreur météo");
+        console.log(e);
+    }
+}
+
+</script>
+
+</body>
+</html>
